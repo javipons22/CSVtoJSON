@@ -12,7 +12,7 @@ const existeAtributo = (newcsv, arrayElement) => {
         
         let validation = false;
         e.attributes.forEach(e=>{
-            if (e.name == arrayElement[0])  {
+            if (e.name == arrayElement.frontend_label)  {
                 validation = true;
             }
         });
@@ -32,7 +32,7 @@ const existeValue = (newcsv, arrayElement) => {
 
         let validation = false;
         e.attributes.forEach(e=>{
-            if (e.name == arrayElement[0] && e.values.includes(arrayElement[1]))  {
+            if (e.name == arrayElement.frontend_label && e.values.includes(arrayElement.value))  {
                 validation = true;
             }
         });
@@ -48,33 +48,47 @@ const existeValue = (newcsv, arrayElement) => {
 }
 
 const crearNewCsv = (inputFile) => {
-  let newcsv=[];
+
+    let newcsv=[];
+    let parsedLines = 0;
+    let valoresRepetidos = 0;
+
     inputFile.forEach((element) => {
 
 
-    if (newcsv.find((e)=>e.id==element[3])==undefined) { //Si no existe el ID en "newcsv"
+    if (newcsv.find((e)=>e.id== element.category_id)==undefined) { //Si no existe el ID en "newcsv"
         newcsv.push({
-            id: element[3],
-            attributes: [{name: element[0], values: [element[1]]}],
+            id:  element.category_id,
+            attributes: [{name: element.frontend_label, values: [element.value]}],
         });
+        parsedLines++;
     } else { // Si existe el ID en "newcsv"
         if (!existeAtributo(newcsv,element)) { // Si no existe el atributo en "newcsv"
-            newcsv.find((e)=>e.id==element[3]).attributes.push({name: element[0], values: [element[1]]}); 
+            newcsv.find((e)=>e.id== element.category_id).attributes.push({name: element.frontend_label, values: [element.value]}); 
+            parsedLines++;
         } else { // Si existe el atributo
             if (!existeValue(newcsv,element)) { // Si no existe el value y existe el atributo
                 
-                let elem = newcsv.find((e)=>e.id==element[3]);
+                let elem = newcsv.find((e)=>e.id== element.category_id);
                 elem.attributes.forEach(e=>{
-                    if (e.name == element[0]) {
-                        e.values.push(element[1]);
+                    if (e.name == element.frontend_label) {
+                        e.values.push(element.value);
                     }
                 });
+                parsedLines++
+            } else {
+                parsedLines++;
+                valoresRepetidos++;
+
             }
         }
     }
     });
     
-    fs.writeFile('data.json', JSON.stringify(newcsv),(err) => {
+    console.log("parsed lines: " , parsedLines);
+    console.log("valores repetidos: ", valoresRepetidos);
+
+    fs.writeFile('data.json', JSON.stringify(newcsv),{encoding: 'utf8'},(err) => {
         if(err) {
             console.log(err);
         }
@@ -85,15 +99,20 @@ app.post('/', upload.single('archivo') ,(req,res) => {
     
     let csvString = req.file.buffer.toString();
     
-    csvtojson({
-        delimiter: ";",
-        noheader:false,
-        output: "csv"
-    })
-    .fromString(csvString)
-    .then((csvRow)=>{
-        crearNewCsv(csvRow);
-    })
+    csvObject = JSON.parse(csvString);
+
+    crearNewCsv(csvObject);
+
+    // csvtojson({
+    //     delimiter: ";",
+    //     noheader:false,
+    //     output: "csv"
+    // })
+    // .fromString(csvString)
+    // .then((csvRow)=>{
+    //     console.log(csvRow);
+    //     crearNewCsv(csvRow);
+    // })
 
     res.send("transformado a Array!");
 });
